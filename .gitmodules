@@ -58,3 +58,10 @@
 [submodule "roms/opensbi"]
 	path = roms/opensbi
 	url = 	https://git.qemu.org/git/opensbi.git
+[submodule "run/symsan"]
+	path = run/symsan
+	url = https://github.com/austin2111/symsan.git
+	branch = softmmu_json_demo
+[submodule "run/symcc"]
+	path = run/symcc
+	url = https://github.com/bitsecurerlab/symcc.git
