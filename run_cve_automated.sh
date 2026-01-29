@@ -56,26 +56,26 @@ puts "\n=== Launching QEMU with SymSan wrapper ===\n"
 
 # Launch with error handling
 if {[catch {
-    spawn env SYMCC_INPUT_FILE=stdin SYMCC_OUTPUT_DIR=/tmp/solver \
+    spawn env SYMCC_INPUT_FILE=stdin SYMCC_OUTPUT_DIR=/tmp/solver SYMSAN_PC_CONFIG=/workdir/analysis/stage1_output.json SYMSAN_CONSTRAINT_DIR=/workdir/constraints \
         symsan_build/driver/fgtest \
         symfit_symsan_build/x86_64-softmmu/symqemu-system-x86_64 \
         -m 2048 \
         -gdb tcp::2368 \
-        -monitor none \
+        -monitor unix:/tmp/qemu-monitor.sock,server,nowait \
         -smp 1 \
         -display none -serial stdio -no-reboot \
         -device virtio-rng-pci \
         -cpu max \
-        -kernel bzImage_android5_10_wq \
+        -kernel /mnt/bzImage_android5_10_wq \
         -device virtio-scsi-pci,id=scsi \
         -device scsi-hd,bus=scsi.0,drive=d0 \
-        -drive file=disk.img,if=none,id=d0 \
+        -drive file=/mnt/disk.qcow2,if=none,id=d0 \
         -append "nokaslr earlyprintk=serial root=/dev/sda1 console=ttyS0" \
         -net user,host=10.0.2.10,hostfwd=tcp:127.0.0.1:555-:22 \
         -net nic,model=e1000 \
         -accel tcg,thread=multi \
         -nographic \
-        -snapshot
+        -loadvm after-login
 } result]} {
     puts "Error spawning QEMU: $result"
     exit 1
@@ -84,40 +84,44 @@ if {[catch {
 puts "\n=== Waiting for boot (timeout: 600s) ===\n"
 
 # Wait for login with EOF handling
-expect {
-    "syzkaller login:" {
-        puts "\n=== Login prompt detected ===\n"
-    }
-    eof {
-        puts "\n=== Process died during boot ===\n"
-        handle_unexpected_close
-    }
-    timeout {
-        puts "\n=== ERROR: Boot timeout ===\n"
-        exit 1
-    }
-}
+# expect {
+#     "syzkaller login:" {
+#         puts "\n=== Login prompt detected ===\n"
+#     }
+#     eof {
+#         puts "\n=== Process died during boot ===\n"
+#         handle_unexpected_close
+#     }
+#     timeout {
+#         puts "\n=== ERROR: Boot timeout ===\n"
+#         exit 1
+#     }
+# }
 
-# Login
-puts "\n=== Logging in as root ===\n"
-send "root\r"
+# # Login
+# puts "\n=== Logging in as root ===\n"
+# send "root\r"
 
-# Wait for shell
-expect {
-    "# " {
-        puts "\n=== Root shell ready ===\n"
-    }
-    eof {
-        puts "\n=== Process died after login ===\n"
-        handle_unexpected_close
-    }
-    timeout {
-        puts "\n=== ERROR: Login timeout ===\n"
-        exit 1
-    }
-}
+# # Wait for shell
+# expect {
+#     "# " {
+#         puts "\n=== Root shell ready ===\n"
+#     }
+#     eof {
+#         puts "\n=== Process died after login ===\n"
+#         handle_unexpected_close
+#     }
+#     timeout {
+#         puts "\n=== ERROR: Login timeout ===\n"
+#         exit 1
+#     }
+# }
 
-sleep 2
+# sleep 2
+
+# puts "\n=== Creating QEMU snapshot ===\n"
+
+# exec sh -c {echo "savevm after-login" | socat - UNIX-CONNECT:/tmp/qemu-monitor.sock}
 
 # Run CVE test
 puts "\n=== Executing: ./cve_poc_wmmap ===\n"
