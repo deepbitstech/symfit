@@ -11,15 +11,10 @@ RUN apt-get update -y &&  \
 RUN apt-get install -y cargo libpixman-1-dev g++ git ninja-build \
      python3-pip zlib1g-dev python2 pkg-config libglib2.0-dev gdb
 
-RUN pip3 install lit
-RUN pip3 install jinja2
+RUN pip3 install lit jinja2
 RUN pip install jinja2
 
-RUN apt-get install clang-12 clang++-12 libc++-12-dev libc++abi-12-dev -y
-
-RUN apt-get install -y parallel libjpeg-turbo8
-
-RUN apt-get install -y nano libcap-dev libcap-ng-dev nodejs npm
+RUN apt-get install clang-12 clang++-12 libc++-12-dev libc++abi-12-dev parallel libjpeg-turbo8 nano libcap-dev libcap-ng-dev nodejs npm -y
 
 RUN git clone https://github.com/Z3Prover/z3.git /z3 && \
 		cd /z3 && git checkout z3-4.8.7 && mkdir -p build && cd build && \
@@ -31,14 +26,17 @@ RUN apt-get update -y && apt-get install -y libopenjp2-7-dev libpng-dev \
                         libjpeg-dev libflac-dev libogg-dev libvorbis-dev libopus-dev \
                         libmp3lame-dev libmpg123-dev libasound2-dev \
                         liblzma-dev libjpeg-turbo8-dev \
-                        libreadline-dev expect
-
-RUN pip3 install anthropic
+                        libreadline-dev expect socat
 
 RUN mkdir -p /tmp/solver /workdir/results
 
 WORKDIR /workdir
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+RUN uv venv --python 3.14
+ENV PATH=/workdir/.venv/bin:$PATH \
+    IS_SANDBOX=1
+RUN uv pip install claude-agent-sdk z3-solver
 COPY run/ /workdir/
 RUN find /workdir -name "*.sh" -exec chmod +x {} \;
-
-
+COPY . /workdir/symfit
+RUN mkdir symcc_build symsan_build symfit_symsan_build && ./compile.sh --symcc && ./compile.sh --enable_debug --symsan && ./compile.sh --symfit_symsan
