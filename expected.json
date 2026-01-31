@@ -1,0 +1,44 @@
+{
+  "vulnerability_summary": "Overflow in watch_queue_set_filter",
+  "vulnerable_function": "watch_queue_set_filter",
+  "loop_locations": [
+    {
+      "loop_id": "loop_condition_entry",
+      "loop_type": "for",
+      "source_line": 338,
+      "loop_condition_pc": "0xffffffff817ef03a",
+      "loop_body_start_pc": "0xffffffff817ef047",
+      "relevant_variables": ["i", "nr_filters"],
+      "why_relevant": "Loop entry - checks if i < nr_filters"
+    },
+    {
+      "loop_id": "type_filter_check",
+      "loop_type": "conditional",
+      "source_line": 339,
+      "loop_condition_pc": "0xffffffff817ef095",
+      "loop_body_start_pc": "0xffffffff817ef09b",
+      "relevant_variables": ["tf[i].type"],
+      "why_relevant": "Determines if entry is skipped - creates allocation mismatch"
+    },
+    {
+      "loop_id": "first_write",
+      "loop_type": "assignment",
+      "source_line": 341,
+      "loop_condition_pc": "0xffffffff817ef0c7",
+      "loop_body_start_pc": "0xffffffff817ef0c7",
+      "relevant_variables": ["q->type"],
+      "why_relevant": "First write to q structure - OOB when q past allocated buffer"
+    },
+    {
+      "loop_id": "loop_continuation",
+      "loop_type": "for",
+      "source_line": 338,
+      "loop_condition_pc": "0xffffffff817ef1f7",
+      "loop_body_start_pc": "0xffffffff817ef047",
+      "relevant_variables": ["i", "nr_filters"],
+      "why_relevant": "Loop continuation check after increment - determines if loop continues"
+    }
+  ],
+  "allocation_pc": "0xffffffff817eefd3",
+  "oob_write_pc": "0xffffffff817ef0c7"
+}

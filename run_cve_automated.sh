@@ -56,7 +56,7 @@ puts "\n=== Launching QEMU with SymSan wrapper ===\n"
 
 # Launch with error handling
 if {[catch {
-    spawn env SYMCC_INPUT_FILE=stdin SYMCC_OUTPUT_DIR=/tmp/solver SYMSAN_PC_CONFIG=/workdir/analysis/stage1_output.json SYMSAN_CONSTRAINT_DIR=/workdir/constraints \
+    spawn env SYMCC_INPUT_FILE=stdin SYMCC_OUTPUT_DIR=/tmp/solver SYMSAN_PC_CONFIG=/workdir/mnt/expected.json SYMSAN_CONSTRAINT_DIR=/workdir/constraints \
         symsan_build/driver/fgtest \
         symfit_symsan_build/x86_64-softmmu/symqemu-system-x86_64 \
         -m 2048 \
@@ -66,10 +66,10 @@ if {[catch {
         -display none -serial stdio -no-reboot \
         -device virtio-rng-pci \
         -cpu max \
-        -kernel /mnt/bzImage_android5_10_wq \
+        -kernel /workdir/mnt/bzImage_android5_10_wq \
         -device virtio-scsi-pci,id=scsi \
         -device scsi-hd,bus=scsi.0,drive=d0 \
-        -drive file=/mnt/disk.qcow2,if=none,id=d0 \
+        -drive file=/workdir/mnt/disk.qcow2,if=none,id=d0 \
         -append "nokaslr earlyprintk=serial root=/dev/sda1 console=ttyS0" \
         -net user,host=10.0.2.10,hostfwd=tcp:127.0.0.1:555-:22 \
         -net nic,model=e1000 \
@@ -124,7 +124,7 @@ puts "\n=== Waiting for boot (timeout: 600s) ===\n"
 # exec sh -c {echo "savevm after-login" | socat - UNIX-CONNECT:/tmp/qemu-monitor.sock}
 
 # Run CVE test
-puts "\n=== Executing: ./cve_poc_wmmap ===\n"
+puts "\n=== Executing: cve_poc_wmmap ===\n"
 send "./cve_poc_wmmap\r"
 
 # Wait for completion with EOF handling
@@ -154,25 +154,23 @@ expect {
 
 sleep 3
 
-# Shutdown
-puts "\n=== Shutting down VM ===\n"
-send "poweroff\r"
+# Force-kill QEMU and all children
+puts "\n=== Killing QEMU process group ===\n"
 
-set timeout 30
-expect {
-    eof {
-        puts "\n=== VM halted ===\n"
-    }
-    timeout {
-        puts "\n=== Forcing shutdown ===\n"
-        send "\003"
-        send "poweroff -f\r"
-        expect {
-            eof { puts "=== Forced halt complete ===\n" }
-            timeout { puts "=== Timeout on forced halt ===\n" }
-        }
-    }
-}
+# spawn_id is the main spawned process
+set qemu_pid [exp_pid]
+
+puts "Sending SIGTERM to process group $qemu_pid"
+catch {exec kill -TERM -- -$qemu_pid}
+
+# Give it a moment to exit cleanly
+sleep 2
+
+# Escalate if needed
+puts "Sending SIGKILL to process group $qemu_pid"
+catch {exec kill -KILL -- -$qemu_pid}
+
+puts "\n=== QEMU process group terminated ===\n"
 
 # Cleanup
 catch {close}
