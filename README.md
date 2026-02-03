@@ -49,6 +49,12 @@ TODO: explain commands
 
 This example shows how you can instrument an Android kernel using qemu system emulator. 
 
+1. Download Android kernel, VM image, and configuration file: https://drive.google.com/file/d/1aSUPs7hyualvY094q0m8AZRIPReV5Y5h/view?usp=sharing
+
+2. Unzip into the current folder. 
+
+3. Launch the container. 
+
 Once you are in the container bash, run:
 
 ```bash
@@ -74,7 +80,13 @@ SYMCC_INPUT_FILE=stdin SYMCC_OUTPUT_DIR=/tmp/solver SYMSAN_PC_CONFIG=/workdir/mn
         -loadvm after-login
 ```
 
-This will load the snapshot and qemu to get constraints.
+4. Run the PoC
+
+```bash
+./cve_poc_wmmap\r
+```
+
+SymFit will collect constraints and save them to `SYMSAN_CONSTRAINT_DIR`.
 
 ### Configurations
 
