@@ -98,3 +98,50 @@ This will load the snapshot and qemu to get constraints.
 
 The script generates the following outputs in `/workdir/constraints`:
 - *[constraints]*.txt*: Extracted constraints for the program counters specified in `SYMSAN_PC_CONFIG`
+
+
+### Userland Binaries and Hybrid Fuzzing
+When analyzing userland binaries within QEMU, an AFL++ coverage map can be passed to the solver using the `SYMCC_AFL_COVERAGE_MAP` option. This allows constraints to be imported from AFL++ for use in hybrid fuzzing environments.
+
+### Marking Variables as Symbolic
+In system mode, variables in compiled programs can be marked symbolic by loading them into memory from the address `0x10000000`. This is done by mapping that address and reading or writing through it. The following example marks a variable as symbolic and prints its value at runtime:
+
+```c
+#include <stdio.h>
+#include <sys/mman.h>
+
+int main(void) {
+    void *ptr = mmap((void *)0x10000000, 1024,
+                     PROT_READ | PROT_WRITE,
+                     MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED,
+                     -1, 0);
+    if (ptr == MAP_FAILED) {
+        fprintf(stderr, "Couldn't mmap!\n");
+        return 1;
+    }
+
+    unsigned int *iptr = (unsigned int *)ptr;
+    *iptr = 1; // Concrete value - can be reassigned normally
+    printf("The value of the symbolic variable at the time of execution is %d\n", *iptr);
+
+    munmap((void *)0x10000000, 1024);
+    return 0;
+}
+```
+
+> **Note:** The target address (`0x10000000`) will need to differ on other emulated CPU architectures, as it could conflict with memory-mapped I/O or other components. No other modifications are needed — the solver will automatically track propagation of symbolic values throughout system memory, generating constraints and producing test cases for the uninstrumented binary.
+
+### Intercepting Syscall Arguments
+Rather than instrumenting individual arguments, the emulator can be signaled to create labels for all syscall arguments automatically. Compile `syscall_instrument.c` for your preferred guest operating system, then use it to bracket your target program:
+
+```sh
+./syscall_instrument enable && ./target_executable && ./syscall_instrument disable
+```
+
+It is recommended to halt instrumentation immediately after the target program terminates in order to reduce noise.
+
+## MCP Server for LLM Agents
+SymFit includes an MCP (Model Context Protocol) server that enables LLM agents to perform automated concolic execution on binaries. It provides a standardized interface for running symbolic execution campaigns, managing test case corpora, analyzing coverage and results, and automating binary analysis workflows.
+
+See the [SymFit MCP repository](https://github.com/bitsecurerlab/symfit) for more details.
+
