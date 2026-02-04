@@ -56,7 +56,7 @@ puts "\n=== Launching QEMU with SymSan wrapper ===\n"
 
 # Launch with error handling
 if {[catch {
-    spawn env SYMCC_INPUT_FILE=stdin SYMCC_OUTPUT_DIR=/tmp/solver SYMSAN_PC_CONFIG=/workdir/mnt/expected.json SYMSAN_CONSTRAINT_DIR=/workdir/constraints \
+    spawn env SYMCC_INPUT_FILE=stdin SYMCC_OUTPUT_DIR=/tmp/solver SYMSAN_PC_CONFIG=/workdir/symfit/expected.json SYMSAN_CONSTRAINT_DIR=/workdir/constraints \
         symsan_build/driver/fgtest \
         symfit_symsan_build/x86_64-softmmu/symqemu-system-x86_64 \
         -m 2048 \
@@ -66,10 +66,10 @@ if {[catch {
         -display none -serial stdio -no-reboot \
         -device virtio-rng-pci \
         -cpu max \
-        -kernel /workdir/mnt/bzImage_android5_10_wq \
+        -kernel /workdir/symfit/bzImage_android5_10_wq \
         -device virtio-scsi-pci,id=scsi \
         -device scsi-hd,bus=scsi.0,drive=d0 \
-        -drive file=/workdir/mnt/disk.qcow2,if=none,id=d0 \
+        -drive file=/workdir/symfit/disk.qcow2,if=none,id=d0 \
         -append "nokaslr earlyprintk=serial root=/dev/sda1 console=ttyS0" \
         -net user,host=10.0.2.10,hostfwd=tcp:127.0.0.1:555-:22 \
         -net nic,model=e1000 \

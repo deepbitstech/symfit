@@ -1,9 +1,9 @@
-Analyze the KASAN report at /workdir/mnt/test.report for a kernel vulnerability. 
+Analyze the KASAN report at /workdir/symfit/test.report for a kernel vulnerability. 
 Identify min and max number of bytes written OOB based on CONSTRAINTS ONLY. 
 
 You have access to:
-- vmlinux file at /workdir/mnt/android_vmlinux
-- Source code at /workdir/mnt/common
+- vmlinux file at /workdir/symfit/android_vmlinux
+- Source code at /workdir/symfit/common
 - run_qemu tool to get constraints
 
 MANDATORY STEPS (follow in order):

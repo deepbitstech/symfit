@@ -8,18 +8,24 @@ SymFit is a symbolic execution framework for analyzing binaries, supporting mult
 
 ## How to Build the Docker Image
 
+**Option A: Build from Dockerfile**
+
 Navigate to the root directory containing the `Dockerfile`, then build the image:
 
 ```bash
-docker build -t symfit_env .
+docker build -t symfit .
+```
+
+**Option B: Load from pre-built image**
+
+```bash
+docker image load -i /path/to/symfit.tar.gz
 ```
 
 ## Launch the Container
 
-Mount the root directory into /workdir/mnt:
-
 ```bash
-docker run --rm -it -v .:/workdir/mnt symfit_env
+docker run --rm -it symfit
 ```
 
 ## Usage
@@ -51,14 +57,16 @@ This example shows how you can instrument an Android kernel using qemu system em
 
 1. Download Android kernel, VM image, and configuration file: https://drive.google.com/file/d/1aSUPs7hyualvY094q0m8AZRIPReV5Y5h/view?usp=sharing
 
-2. Unzip into the current folder. 
+2. Unzip into the current folder.
+
+   **Note:** Steps 1 and 2 are not necessary if you loaded the Docker image from `symfit.tar.gz`, as these files are already included.
 
 3. Launch the container. 
 
 Once you are in the container bash, run:
 
 ```bash
-SYMCC_INPUT_FILE=stdin SYMCC_OUTPUT_DIR=/tmp/solver SYMSAN_PC_CONFIG=/workdir/mnt/expected.json SYMSAN_CONSTRAINT_DIR=/workdir/constraints \
+SYMCC_INPUT_FILE=stdin SYMCC_OUTPUT_DIR=/tmp/solver SYMSAN_PC_CONFIG=/workdir/symfit/expected.json SYMSAN_CONSTRAINT_DIR=/workdir/constraints \
         symsan_build/driver/fgtest \
         symfit_symsan_build/x86_64-softmmu/symqemu-system-x86_64 \
         -m 2048 \
@@ -68,10 +76,10 @@ SYMCC_INPUT_FILE=stdin SYMCC_OUTPUT_DIR=/tmp/solver SYMSAN_PC_CONFIG=/workdir/mn
         -display none -serial stdio -no-reboot \
         -device virtio-rng-pci \
         -cpu max \
-        -kernel /workdir/mnt/bzImage_android5_10_wq \
+        -kernel /workdir/symfit/bzImage_android5_10_wq \
         -device virtio-scsi-pci,id=scsi \
         -device scsi-hd,bus=scsi.0,drive=d0 \
-        -drive file=/workdir/mnt/disk.qcow2,if=none,id=d0 \
+        -drive file=/workdir/symfit/disk.qcow2,if=none,id=d0 \
         -append "nokaslr earlyprintk=serial root=/dev/sda1 console=ttyS0" \
         -net user,host=10.0.2.10,hostfwd=tcp:127.0.0.1:555-:22 \
         -net nic,model=e1000 \
@@ -92,7 +100,7 @@ SymFit will collect constraints and save them to `SYMSAN_CONSTRAINT_DIR`.
 
 **SYMSAN_PC_CONFIG**
 - **Purpose**: Specifies a JSON configuration file that defines which program counter (PC) addresses to track during symbolic execution
-- **Value**: `/workdir/mnt/expected.json`
+- **Value**: `/workdir/symfit/expected.json`
 - **Usage**: This configuration file tells SymSan which code locations (instruction addresses) should be monitored and symbolically executed. It's essential for targeting specific vulnerable code paths
 - **Example**: The JSON file contains PC addresses that correspond to the CVE vulnerability being analyzed
 
@@ -100,11 +108,11 @@ SymFit will collect constraints and save them to `SYMSAN_CONSTRAINT_DIR`.
 
 **-kernel**
 - **Purpose**: Specifies the Linux kernel image to boot in QEMU
-- **Value**: `/workdir/mnt/bzImage_android5_10_wq`
+- **Value**: `/workdir/symfit/bzImage_android5_10_wq`
 
 **-drive**
 - **Purpose**: Defines a disk drive for the virtual machine. This drive contains a snapshot after login to save boot time.
-- **Value**: `file=/workdir/mnt/disk.qcow2,if=none,id=d0`
+- **Value**: `file=/workdir/symfit/disk.qcow2,if=none,id=d0`
 
 ## Outputs
 
@@ -151,6 +159,22 @@ Rather than instrumenting individual arguments, the emulator can be signaled to 
 ```
 
 It is recommended to halt instrumentation immediately after the target program terminates in order to reduce noise.
+
+## Automated Concolic Execution with LLM Agent
+
+SymFit comes with a dedicated LLM agent to help with automated concolic execution. To see how it works on CVE-2022-0995:
+
+1. Inside the Docker container, start the agent:
+   ```bash
+   python server.py
+   ```
+
+2. Enter the following prompt:
+   ```
+   Please read /workdir/symfit/claude_code_task.md and run the task
+   ```
+
+The agent will automatically perform the concolic execution workflow for the specified CVE.
 
 ## MCP Server for LLM Agents
 SymFit includes an MCP (Model Context Protocol) server that enables LLM agents to perform automated concolic execution on binaries. It provides a standardized interface for running symbolic execution campaigns, managing test case corpora, analyzing coverage and results, and automating binary analysis workflows.
